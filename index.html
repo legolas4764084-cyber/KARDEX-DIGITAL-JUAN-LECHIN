@@ -1,0 +1,470 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>KARDEX DIGITAL JUAN LECHIN OQUENDO</title>
+
+    <!-- Firebase Compat -->
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore-compat.js"></script>
+
+    <!-- jsPDF + html2canvas -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: Arial, Helvetica, sans-serif;
+            background: #556B2F;
+            min-height: 100vh;
+            color: #fff;
+        }
+        #loginScreen {
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            background: linear-gradient(to bottom, #556B2F, #6B8E23);
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+        #loginScreen h1 { font-size: 3em; margin-bottom: 25px; text-shadow: 3px 3px 8px rgba(0,0,0,0.6); }
+        #loginScreen p { font-size: 1.4em; margin-bottom: 50px; }
+        .btn-access {
+            width: 340px;
+            padding: 22px;
+            margin: 20px;
+            font-size: 1.6em;
+            font-weight: bold;
+            color: white;
+            border: none;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 8px 18px rgba(0,0,0,0.4);
+        }
+        .btn-direccion { background: #8B4513; }
+        .btn-profesores { background: #2E8B57; }
+        .btn-access:hover { transform: translateY(-5px); box-shadow: 0 12px 25px rgba(0,0,0,0.5); }
+
+        #mainApp { display: none; min-height: 100vh; }
+        header {
+            background: #556B2F;
+            color: white;
+            padding: 25px;
+            text-align: center;
+            position: relative;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+        }
+        header img { height: 110px; margin-bottom: 15px; }
+        .logout-btn {
+            position: absolute;
+            top: 25px;
+            right: 25px;
+            background: #8B4513;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .container {
+            width: 92%;
+            max-width: 1150px;
+            margin: 35px auto;
+            padding: 0 20px;
+            background: rgba(255,255,255,0.92);
+            border-radius: 12px;
+            color: #333;
+        }
+        h2 {
+            color: #556B2F;
+            border-bottom: 4px solid #6B8E23;
+            padding-bottom: 12px;
+            margin-bottom: 25px;
+        }
+        form {
+            background: white;
+            padding: 28px;
+            border-radius: 10px;
+            box-shadow: 0 5px 18px rgba(0,0,0,0.12);
+            margin-bottom: 40px;
+        }
+        label { font-weight: bold; display: block; margin: 14px 0 8px; }
+        input, select {
+            width: 100%;
+            padding: 13px;
+            margin-bottom: 18px;
+            border: 1px solid #aaa;
+            border-radius: 6px;
+            font-size: 1.05em;
+        }
+        button:not(.btn-access):not(.logout-btn):not(.btn-delete-all) {
+            background: #556B2F;
+            color: white;
+            padding: 13px 28px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 1.1em;
+        }
+        button:hover:not(.btn-access):not(.logout-btn):not(.btn-delete-all) { background: #6B8E23; }
+
+        .btn-delete-all {
+            background: #8B0000;
+            color: white;
+            padding: 16px 35px;
+            font-size: 1.3em;
+            font-weight: bold;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            margin-top: 35px;
+            box-shadow: 0 6px 15px rgba(139,0,0,0.4);
+        }
+        .btn-delete-all:hover { background: #B22222; transform: translateY(-3px); }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 25px; background: white; box-shadow: 0 3px 10px rgba(0,0,0,0.1); }
+        th, td { border: 1px solid #ccc; padding: 14px; text-align: left; }
+        th { background: #556B2F; color: white; }
+        .section { margin-bottom: 60px; }
+        .hidden { display: none !important; }
+        #recordsContainer { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 18px rgba(0,0,0,0.12); }
+        .delete-section { background: #fff5f5; border: 3px solid #8B0000; border-radius: 12px; padding: 30px; margin-top: 70px; text-align: center; }
+        .delete-section h3 { color: #8B0000; margin-bottom: 20px; font-size: 1.5em; }
+    </style>
+</head>
+<body>
+
+<div id="loginScreen">
+    <h1>KARDEX DIGITAL<br>JUAN LECHIN OQUENDO</h1>
+    <p>Sistema de Registro Escolar</p>
+    <button class="btn-access btn-direccion" id="btnDireccion">DIRECCIÓN</button>
+    <button class="btn-access btn-profesores" id="btnProfesores">PROFESORES</button>
+</div>
+
+<div id="mainApp">
+    <header>
+        <img src="https://i.ibb.co/kc1K1nZ/logo-jaime-escalante.png" alt="Logo">
+        <h1>Kardex Digital Juan Lechín Oquendo</h1>
+        <button class="logout-btn" id="logoutBtn">Cerrar Sesión</button>
+    </header>
+
+    <div class="container">
+        <!-- Sección 1: Crear Curso -->
+        <div class="section" id="sectionCrearCurso">
+            <h2>1. Crear un Nuevo Curso</h2>
+            <form id="addCourseForm">
+                <label for="courseName">Nombre del Curso:</label>
+                <input type="text" id="courseName" required placeholder="Ej: 5to A, 3ro B">
+                <button type="submit">Crear Curso</button>
+            </form>
+        </div>
+
+        <!-- Sección 2: Agregar Estudiante -->
+        <div class="section" id="sectionAgregarEstudiante">
+            <h2>2. Agregar Estudiante a un Curso</h2>
+            <form id="addStudentForm">
+                <label for="selectCourseAddStudent">Seleccionar Curso:</label>
+                <select id="selectCourseAddStudent" required></select>
+                <label for="studentName">Nombre Completo del Estudiante:</label>
+                <input type="text" id="studentName" required placeholder="Ej: María López García">
+                <button type="submit">Agregar Estudiante</button>
+            </form>
+        </div>
+
+        <!-- Sección 3: Registrar Incidencia -->
+        <div class="section" id="sectionRegistrarIncidencia">
+            <h2>3. Registrar Incidencia</h2>
+            <form id="registerIssueForm">
+                <label for="selectCourseIssue">Seleccionar Curso:</label>
+                <select id="selectCourseIssue" required></select>
+                <label for="selectStudent">Seleccionar Estudiante:</label>
+                <select id="selectStudent" required></select>
+                <label for="trimestre">Trimestre:</label>
+                <select id="trimestre" required>
+                    <option value="1er Trimestre">1er Trimestre</option>
+                    <option value="2do Trimestre">2do Trimestre</option>
+                    <option value="3er Trimestre">3er Trimestre</option>
+                </select>
+                <label for="issueType">Tipo de Incidencia:</label>
+                <select id="issueType" required>
+                    <option value="falta">Falta (Ausencia)</option>
+                    <option value="incumplimiento">Incumplimiento</option>
+                    <option value="indisciplina">Indisciplina</option>
+                </select>
+                <label for="subject">Materia:</label>
+                <select id="subject" required>
+                    <option value="MAT">MAT - Matemáticas</option>
+                    <option value="LEN">LEN - Lenguaje</option>
+                    <option value="ING">ING - Inglés</option>
+                    <option value="CSC">CSC - Ciencias Sociales</option>
+                    <option value="EFI">EFI - Educación Física</option>
+                    <option value="MUS">MUS - Música</option>
+                    <option value="REL">REL - Religión</option>
+                    <option value="ATP">ATP - Artes Plásticas</option>
+                    <option value="FIL">FIL - Filosofía</option>
+                    <option value="TEC">TEC - Tecnología</option>
+                    <option value="BIO">BIO - Biología</option>
+                    <option value="QMC">QMC - Química</option>
+                    <option value="FIS">FIS - Física</option>
+                </select>
+                <label for="issueDate">Fecha:</label>
+                <input type="date" id="issueDate" required>
+                <label for="issueDescription">Descripción:</label>
+                <input type="text" id="issueDescription" required placeholder="Describa la incidencia">
+                <button type="submit">Registrar Incidencia</button>
+            </form>
+        </div>
+
+        <!-- Sección Admin: Borrar Todo (solo Dirección) -->
+        <div class="section hidden" id="sectionAdminTools">
+            <div class="delete-section">
+                <h3>Zona de Administración - Borrado Total</h3>
+                <p style="color: #8B0000; font-weight: bold; margin-bottom: 20px;">
+                    ¡Cuidado! Esta acción eliminará TODOS los datos permanentemente.
+                </p>
+                <button class="btn-delete-all" id="btnBorrarTodo">BORRAR TODOS LOS DATOS</button>
+            </div>
+        </div>
+
+        <!-- Sección 4: Ver Registros -->
+        <div class="section">
+            <h2>4. Ver Registros</h2>
+            <label for="viewType">Tipo de vista:</label>
+            <select id="viewType">
+                <option value="course">Por Curso</option>
+                <option value="student">Por Estudiante</option>
+            </select>
+
+            <div id="viewByCourse" style="margin: 15px 0;">
+                <label for="selectCourseView">Seleccionar Curso:</label>
+                <select id="selectCourseView"></select>
+            </div>
+
+            <div id="viewByStudent" style="display:none; margin: 15px 0;">
+                <label for="selectCourseStudent">Seleccionar Curso:</label>
+                <select id="selectCourseStudent"></select>
+                <label for="selectStudentView">Seleccionar Estudiante:</label>
+                <select id="selectStudentView"></select>
+            </div>
+
+            <button id="viewRecordsBtn" style="margin: 20px 10px 0 0;">Ver Registros</button>
+            <button id="exportPdfBtn" style="display:none;">Exportar a PDF</button>
+
+            <div id="recordsContainer" style="margin-top: 30px;">
+                <div id="recordsTable"></div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// ────────────────────────────────────────────────
+// Firebase Config (nuevo proyecto kardex-digital-lechin)
+const firebaseConfig = {
+  apiKey: "AIzaSyC91GTg30mrUxgRGqjph8CMNJDji8q7rNo",
+  authDomain: "kardex-digital-lechin.firebaseapp.com",
+  projectId: "kardex-digital-lechin",
+  storageBucket: "kardex-digital-lechin.firebasestorage.app",
+  messagingSenderId: "443530817302",
+  appId: "1:443530817302:web:b5ac38c25e89d297acaa37",
+  measurementId: "G-590FZ3ZDVM"
+};
+
+firebase.initializeApp(firebaseConfig);
+const db = firebase.firestore();
+
+const CONTRASEÑA_DIRECCION = "JUANLECHINOQUENDO2026";
+let modoActual = null;
+
+// ────────────────────────────────────────────────
+// Cargar y actualizar selects de cursos
+function updateCourseSelects() {
+    const selects = [
+        'selectCourseAddStudent', 
+        'selectCourseIssue',
+        'selectCourseView', 
+        'selectCourseStudent'
+    ];
+    
+    db.collection('courses').get()
+        .then(snapshot => {
+            selects.forEach(id => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                select.innerHTML = '<option value="">-- Seleccione un curso --</option>';
+                snapshot.forEach(doc => {
+                    const opt = document.createElement('option');
+                    opt.value = doc.id;
+                    opt.textContent = doc.id;
+                    select.appendChild(opt);
+                });
+            });
+        })
+        .catch(err => {
+            console.error("Error al cargar cursos:", err);
+            alert("No se pudieron cargar los cursos. Revisa la consola.");
+        });
+}
+
+// ────────────────────────────────────────────────
+// Actualizar lista de estudiantes según curso seleccionado
+function updateStudentSelect(courseSelectId, studentSelectId) {
+    const course = document.getElementById(courseSelectId).value;
+    const select = document.getElementById(studentSelectId);
+    if (!select) return;
+    
+    select.innerHTML = '<option value="">-- Seleccione un estudiante --</option>';
+    
+    if (!course) return;
+
+    db.collection('courses').doc(course).get()
+        .then(doc => {
+            if (doc.exists) {
+                const students = doc.data().students || [];
+                students.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.name;
+                    opt.textContent = s.name;
+                    select.appendChild(opt);
+                });
+            }
+        })
+        .catch(err => console.error("Error al cargar estudiantes:", err));
+}
+
+// ────────────────────────────────────────────────
+// Mostrar la app según rol
+function mostrarApp() {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('mainApp').style.display = 'block';
+    updateCourseSelects();
+
+    if (modoActual === 'direccion') {
+        document.getElementById('sectionAdminTools').classList.remove('hidden');
+    }
+
+    if (modoActual === 'profesor') {
+        document.getElementById('sectionCrearCurso').classList.add('hidden');
+        document.getElementById('sectionAgregarEstudiante').classList.add('hidden');
+    }
+}
+
+// ────────────────────────────────────────────────
+// Acceso Dirección
+document.getElementById('btnDireccion').addEventListener('click', () => {
+    const pass = prompt("Contraseña para DIRECCIÓN:");
+    if (pass === CONTRASEÑA_DIRECCION) {
+        modoActual = 'direccion';
+        mostrarApp();
+    } else {
+        alert("Contraseña incorrecta.");
+    }
+});
+
+// Acceso Profesores
+document.getElementById('btnProfesores').addEventListener('click', () => {
+    if (confirm("¿Ingresar como PROFESOR?\n(Solo registro de incidencias)")) {
+        modoActual = 'profesor';
+        mostrarApp();
+    }
+});
+
+// Cerrar sesión
+document.getElementById('logoutBtn').addEventListener('click', () => {
+    if (confirm("¿Cerrar sesión?")) {
+        document.getElementById('mainApp').style.display = 'none';
+        document.getElementById('loginScreen').style.display = 'flex';
+        modoActual = null;
+    }
+});
+
+// ────────────────────────────────────────────────
+// Crear curso (corregido y mejorado)
+document.getElementById('addCourseForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const name = document.getElementById('courseName').value.trim();
+    if (!name) return alert("Ingrese un nombre válido para el curso");
+
+    db.collection('courses').doc(name).get().then(doc => {
+        if (doc.exists) {
+            alert("El curso ya existe");
+            return;
+        }
+
+        db.collection('courses').doc(name).set({ students: [] })
+            .then(() => {
+                alert("Curso creado correctamente");
+                document.getElementById('courseName').value = '';
+                updateCourseSelects();
+            })
+            .catch(err => {
+                console.error("Error al crear curso:", err);
+                alert("Error al crear el curso: " + err.message);
+            });
+    }).catch(err => console.error("Error al verificar curso:", err));
+});
+
+// ────────────────────────────────────────────────
+// Agregar estudiante (corregido y mejorado)
+document.getElementById('addStudentForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const course = document.getElementById('selectCourseAddStudent').value;
+    const name = document.getElementById('studentName').value.trim();
+
+    if (!course || !name) {
+        alert("Seleccione un curso y escriba el nombre del estudiante");
+        return;
+    }
+
+    db.collection('courses').doc(course).get().then(doc => {
+        if (!doc.exists) {
+            alert("El curso seleccionado no existe");
+            return;
+        }
+
+        const data = doc.data();
+        if (data.students.some(s => s.name.toLowerCase() === name.toLowerCase())) {
+            alert("Este estudiante ya está registrado en el curso");
+            return;
+        }
+
+        data.students.push({ name, issues: [] });
+
+        db.collection('courses').doc(course).update({ students: data.students })
+            .then(() => {
+                alert("Estudiante agregado correctamente");
+                document.getElementById('studentName').value = '';
+                updateCourseSelects();              // Refresca todos los selects de cursos
+                updateStudentSelect('selectCourseIssue', 'selectStudent');
+                updateStudentSelect('selectCourseStudent', 'selectStudentView');
+            })
+            .catch(err => {
+                console.error("Error al agregar estudiante:", err);
+                alert("Error al agregar estudiante: " + err.message);
+            });
+    }).catch(err => console.error("Error al leer curso:", err));
+});
+
+// ────────────────────────────────────────────────
+// Resto de funciones (registrar incidencia, ver registros, exportar PDF, borrar todo)
+// Mantienen la misma lógica que ya funcionaba bien en tu versión anterior
+
+// ... (puedes copiar aquí las funciones restantes: registerIssueForm, viewRecordsBtn, renderTable, exportPdfBtn, btnBorrarTodo, etc.)
+
+// Actualización automática de estudiantes al cambiar curso
+document.getElementById('selectCourseIssue').addEventListener('change', () => updateStudentSelect('selectCourseIssue', 'selectStudent'));
+document.getElementById('selectCourseStudent').addEventListener('change', () => updateStudentSelect('selectCourseStudent', 'selectStudentView'));
+
+// Inicialización al cargar (opcional, pero recomendado)
+window.addEventListener('load', () => {
+    updateCourseSelects();
+});
+</script>
+</body>
+</html>
