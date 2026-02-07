@@ -60,7 +60,7 @@
             position: relative;
             box-shadow: 0 4px 12px rgba(0,0,0,0.4);
         }
-        header img { height: 110px; margin-bottom: 15px; }
+        header img { height: 110px; margin-bottom: 15px; border-radius: 8px; }
         .logout-btn {
             position: absolute;
             top: 25px;
@@ -136,6 +136,8 @@
         #recordsContainer { background: white; padding: 30px; border-radius: 12px; box-shadow: 0 5px 18px rgba(0,0,0,0.12); }
         .delete-section { background: #fff5f5; border: 3px solid #8B0000; border-radius: 12px; padding: 30px; margin-top: 70px; text-align: center; }
         .delete-section h3 { color: #8B0000; margin-bottom: 20px; font-size: 1.5em; }
+        .filter-row { display: flex; flex-wrap: wrap; gap: 20px; align-items: flex-end; margin: 20px 0; }
+        .filter-row > div { flex: 1; min-width: 220px; }
     </style>
 </head>
 <body>
@@ -149,14 +151,16 @@
 
 <div id="mainApp">
     <header>
-        <img src="https://i.ibb.co/kc1K1nZ/logo-jaime-escalante.png" alt="Logo">
+        <img src="https://i.ibb.co/kc1K1nZ/logo-jaime-escalante.png" alt="Logo" 
+             onerror="this.src='data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgdmlld0JveD0iMCAwIDEwMCAxMDAiIGZpbGw9Im5vbmUiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiM0Q0E1RkYiLz48dGV4dCB4PSI1MCIgeT0iNjAiIGZvbnQtc2l6ZT0iNDAiIHRleHQtYW5jaG9yPSJtaWRkbGUiIGZpbGw9IndoaXRlIj5MT0dPPC90ZXh0Pjwvc3ZnPg=='">
         <h1>Kardex Digital Juan Lechín Oquendo</h1>
         <button class="logout-btn" id="logoutBtn">Cerrar Sesión</button>
     </header>
 
     <div class="container">
-        <!-- Sección 1: Crear Curso -->
-        <div class="section" id="sectionCrearCurso">
+
+        <!-- Sección 1: Crear Curso (solo Dirección) -->
+        <div class="section hidden" id="sectionCrearCurso">
             <h2>1. Crear un Nuevo Curso</h2>
             <form id="addCourseForm">
                 <label for="courseName">Nombre del Curso:</label>
@@ -165,8 +169,8 @@
             </form>
         </div>
 
-        <!-- Sección 2: Agregar Estudiante -->
-        <div class="section" id="sectionAgregarEstudiante">
+        <!-- Sección 2: Agregar Estudiante (solo Dirección) -->
+        <div class="section hidden" id="sectionAgregarEstudiante">
             <h2>2. Agregar Estudiante a un Curso</h2>
             <form id="addStudentForm">
                 <label for="selectCourseAddStudent">Seleccionar Curso:</label>
@@ -196,6 +200,7 @@
                     <option value="falta">Falta (Ausencia)</option>
                     <option value="incumplimiento">Incumplimiento</option>
                     <option value="indisciplina">Indisciplina</option>
+                    <option value="citacion">Citación</option>
                 </select>
                 <label for="subject">Materia:</label>
                 <select id="subject" required>
@@ -235,37 +240,45 @@
         <!-- Sección 4: Ver Registros -->
         <div class="section">
             <h2>4. Ver Registros</h2>
-            <label for="viewType">Tipo de vista:</label>
-            <select id="viewType">
-                <option value="course">Por Curso</option>
-                <option value="student">Por Estudiante</option>
-            </select>
 
-            <div id="viewByCourse" style="margin: 15px 0;">
-                <label for="selectCourseView">Seleccionar Curso:</label>
-                <select id="selectCourseView"></select>
+            <div id="viewByStudent">
+                <div class="filter-row">
+                    <div>
+                        <label for="selectCourseStudent">Seleccionar Curso:</label>
+                        <select id="selectCourseStudent"></select>
+                    </div>
+
+                    <div>
+                        <label for="selectStudentView">Seleccionar Estudiante:</label>
+                        <select id="selectStudentView"></select>
+                    </div>
+
+                    <div id="divTrimestreEstudiante" class="hidden">
+                        <label for="selectTrimestreEstudiante">Seleccionar Trimestre:</label>
+                        <select id="selectTrimestreEstudiante">
+                            <option value="">-- Todos los trimestres --</option>
+                            <option value="1er Trimestre">1er Trimestre</option>
+                            <option value="2do Trimestre">2do Trimestre</option>
+                            <option value="3er Trimestre">3er Trimestre</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button id="viewStudentBtn" style="margin-top:20px;">Ver Registros del Estudiante</button>
             </div>
 
-            <div id="viewByStudent" style="display:none; margin: 15px 0;">
-                <label for="selectCourseStudent">Seleccionar Curso:</label>
-                <select id="selectCourseStudent"></select>
-                <label for="selectStudentView">Seleccionar Estudiante:</label>
-                <select id="selectStudentView"></select>
-            </div>
-
-            <button id="viewRecordsBtn" style="margin: 20px 10px 0 0;">Ver Registros</button>
-            <button id="exportPdfBtn" style="display:none;">Exportar a PDF</button>
-
-            <div id="recordsContainer" style="margin-top: 30px;">
+            <div id="recordsContainer" style="margin-top:40px;">
                 <div id="recordsTable"></div>
             </div>
+
+            <button id="exportPdfBtn" style="display:none; margin-top:20px;">Exportar a PDF</button>
         </div>
+
     </div>
 </div>
 
 <script>
-// ────────────────────────────────────────────────
-// Firebase Config (nuevo proyecto kardex-digital-lechin)
+// Firebase Config
 const firebaseConfig = {
   apiKey: "AIzaSyC91GTg30mrUxgRGqjph8CMNJDji8q7rNo",
   authDomain: "kardex-digital-lechin.firebaseapp.com",
@@ -282,64 +295,57 @@ const db = firebase.firestore();
 const CONTRASEÑA_DIRECCION = "JUANLECHINOQUENDO2026";
 let modoActual = null;
 
-// ────────────────────────────────────────────────
-// Cargar y actualizar selects de cursos
+// Cargar cursos
 function updateCourseSelects() {
     const selects = [
-        'selectCourseAddStudent', 
+        'selectCourseAddStudent',
         'selectCourseIssue',
-        'selectCourseView', 
         'selectCourseStudent'
     ];
-    
-    db.collection('courses').get()
-        .then(snapshot => {
-            selects.forEach(id => {
-                const select = document.getElementById(id);
-                if (!select) return;
-                select.innerHTML = '<option value="">-- Seleccione un curso --</option>';
+    db.collection('courses').get().then(snapshot => {
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (select) {
+                select.innerHTML = '<option value="">-- Seleccione curso --</option>';
                 snapshot.forEach(doc => {
                     const opt = document.createElement('option');
                     opt.value = doc.id;
                     opt.textContent = doc.id;
                     select.appendChild(opt);
                 });
-            });
-        })
-        .catch(err => {
-            console.error("Error al cargar cursos:", err);
-            alert("No se pudieron cargar los cursos. Revisa la consola.");
+            }
         });
+    }).catch(err => console.error("Error cargando cursos:", err));
 }
 
-// ────────────────────────────────────────────────
-// Actualizar lista de estudiantes según curso seleccionado
+// Cargar estudiantes
 function updateStudentSelect(courseSelectId, studentSelectId) {
-    const course = document.getElementById(courseSelectId).value;
+    const course = document.getElementById(courseSelectId)?.value;
     const select = document.getElementById(studentSelectId);
     if (!select) return;
-    
-    select.innerHTML = '<option value="">-- Seleccione un estudiante --</option>';
-    
+
+    select.innerHTML = '<option value="">-- Seleccione estudiante --</option>';
+
     if (!course) return;
 
-    db.collection('courses').doc(course).get()
-        .then(doc => {
-            if (doc.exists) {
-                const students = doc.data().students || [];
-                students.forEach(s => {
-                    const opt = document.createElement('option');
-                    opt.value = s.name;
-                    opt.textContent = s.name;
-                    select.appendChild(opt);
-                });
+    db.collection('courses').doc(course).get().then(doc => {
+        if (doc.exists) {
+            const students = doc.data().students || [];
+            students.forEach(s => {
+                const opt = document.createElement('option');
+                opt.value = s.name;
+                opt.textContent = s.name;
+                select.appendChild(opt);
+            });
+            // Mostrar trimestre solo después de elegir estudiante
+            if (studentSelectId === 'selectStudentView') {
+                document.getElementById('divTrimestreEstudiante').classList.toggle('hidden', !course || !select.value);
             }
-        })
-        .catch(err => console.error("Error al cargar estudiantes:", err));
+        }
+    }).catch(err => console.error("Error cargando estudiantes:", err));
 }
 
-// ────────────────────────────────────────────────
-// Mostrar la app según rol
+// Mostrar app según rol
 function mostrarApp() {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('mainApp').style.display = 'block';
@@ -347,16 +353,16 @@ function mostrarApp() {
 
     if (modoActual === 'direccion') {
         document.getElementById('sectionAdminTools').classList.remove('hidden');
-    }
-
-    if (modoActual === 'profesor') {
+        document.getElementById('sectionCrearCurso').classList.remove('hidden');
+        document.getElementById('sectionAgregarEstudiante').classList.remove('hidden');
+    } else {
         document.getElementById('sectionCrearCurso').classList.add('hidden');
         document.getElementById('sectionAgregarEstudiante').classList.add('hidden');
+        document.getElementById('sectionAdminTools').classList.add('hidden');
     }
 }
 
-// ────────────────────────────────────────────────
-// Acceso Dirección
+// Login Dirección
 document.getElementById('btnDireccion').addEventListener('click', () => {
     const pass = prompt("Contraseña para DIRECCIÓN:");
     if (pass === CONTRASEÑA_DIRECCION) {
@@ -367,9 +373,9 @@ document.getElementById('btnDireccion').addEventListener('click', () => {
     }
 });
 
-// Acceso Profesores
+// Login Profesores
 document.getElementById('btnProfesores').addEventListener('click', () => {
-    if (confirm("¿Ingresar como PROFESOR?\n(Solo registro de incidencias)")) {
+    if (confirm("¿Ingresar como PROFESOR?")) {
         modoActual = 'profesor';
         mostrarApp();
     }
@@ -384,87 +390,198 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     }
 });
 
-// ────────────────────────────────────────────────
-// Crear curso (corregido y mejorado)
-document.getElementById('addCourseForm').addEventListener('submit', e => {
+// Crear curso
+document.getElementById('addCourseForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const name = document.getElementById('courseName').value.trim();
-    if (!name) return alert("Ingrese un nombre válido para el curso");
+    if (!name) return alert("Ingrese nombre del curso");
 
     db.collection('courses').doc(name).get().then(doc => {
         if (doc.exists) {
             alert("El curso ya existe");
-            return;
+        } else {
+            db.collection('courses').doc(name).set({ students: [] })
+                .then(() => {
+                    alert("Curso creado");
+                    document.getElementById('courseName').value = '';
+                    updateCourseSelects();
+                })
+                .catch(err => alert("Error: " + err.message));
         }
-
-        db.collection('courses').doc(name).set({ students: [] })
-            .then(() => {
-                alert("Curso creado correctamente");
-                document.getElementById('courseName').value = '';
-                updateCourseSelects();
-            })
-            .catch(err => {
-                console.error("Error al crear curso:", err);
-                alert("Error al crear el curso: " + err.message);
-            });
-    }).catch(err => console.error("Error al verificar curso:", err));
+    });
 });
 
-// ────────────────────────────────────────────────
-// Agregar estudiante (corregido y mejorado)
-document.getElementById('addStudentForm').addEventListener('submit', e => {
+// Agregar estudiante
+document.getElementById('addStudentForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const course = document.getElementById('selectCourseAddStudent').value;
     const name = document.getElementById('studentName').value.trim();
-
-    if (!course || !name) {
-        alert("Seleccione un curso y escriba el nombre del estudiante");
-        return;
-    }
+    if (!course || !name) return alert("Complete los campos");
 
     db.collection('courses').doc(course).get().then(doc => {
-        if (!doc.exists) {
-            alert("El curso seleccionado no existe");
-            return;
-        }
+        if (!doc.exists) return alert("Curso no encontrado");
 
         const data = doc.data();
-        if (data.students.some(s => s.name.toLowerCase() === name.toLowerCase())) {
-            alert("Este estudiante ya está registrado en el curso");
+        if (data.students.some(s => s.name === name)) {
+            alert("El estudiante ya está en este curso");
             return;
         }
 
         data.students.push({ name, issues: [] });
-
         db.collection('courses').doc(course).update({ students: data.students })
             .then(() => {
-                alert("Estudiante agregado correctamente");
+                alert("Estudiante agregado");
                 document.getElementById('studentName').value = '';
-                updateCourseSelects();              // Refresca todos los selects de cursos
                 updateStudentSelect('selectCourseIssue', 'selectStudent');
                 updateStudentSelect('selectCourseStudent', 'selectStudentView');
             })
-            .catch(err => {
-                console.error("Error al agregar estudiante:", err);
-                alert("Error al agregar estudiante: " + err.message);
-            });
-    }).catch(err => console.error("Error al leer curso:", err));
+            .catch(err => alert("Error: " + err.message));
+    });
 });
 
-// ────────────────────────────────────────────────
-// Resto de funciones (registrar incidencia, ver registros, exportar PDF, borrar todo)
-// Mantienen la misma lógica que ya funcionaba bien en tu versión anterior
+// Registrar incidencia (sin recargar página)
+document.getElementById('registerIssueForm').addEventListener('submit', e => {
+    e.preventDefault();
+    const course = document.getElementById('selectCourseIssue').value;
+    const studentName = document.getElementById('selectStudent').value;
+    const trimestre = document.getElementById('trimestre').value;
+    const type = document.getElementById('issueType').value;
+    const subject = document.getElementById('subject').value;
+    const date = document.getElementById('issueDate').value;
+    const desc = document.getElementById('issueDescription').value.trim();
 
-// ... (puedes copiar aquí las funciones restantes: registerIssueForm, viewRecordsBtn, renderTable, exportPdfBtn, btnBorrarTodo, etc.)
+    if (!course || !studentName || !trimestre || !type || !subject || !date || !desc) {
+        return alert("Complete todos los campos");
+    }
 
-// Actualización automática de estudiantes al cambiar curso
-document.getElementById('selectCourseIssue').addEventListener('change', () => updateStudentSelect('selectCourseIssue', 'selectStudent'));
-document.getElementById('selectCourseStudent').addEventListener('change', () => updateStudentSelect('selectCourseStudent', 'selectStudentView'));
+    db.collection('courses').doc(course).get().then(doc => {
+        if (!doc.exists) return alert("Curso no encontrado");
 
-// Inicialización al cargar (opcional, pero recomendado)
-window.addEventListener('load', () => {
-    updateCourseSelects();
+        const data = doc.data();
+        const student = data.students.find(s => s.name === studentName);
+        if (!student) return alert("Estudiante no encontrado");
+
+        student.issues.push({ trimestre, type, subject, date, description: desc });
+
+        db.collection('courses').doc(course).update({ students: data.students })
+            .then(() => {
+                alert("Incidencia registrada correctamente");
+                document.getElementById('issueDate').value = '';
+                document.getElementById('issueDescription').value = '';
+            })
+            .catch(err => alert("Error al guardar: " + err.message));
+    }).catch(err => alert("Error al leer curso: " + err.message));
 });
+
+// Borrar todos los datos
+document.getElementById('btnBorrarTodo')?.addEventListener('click', () => {
+    if (!confirm("¿Estás absolutamente seguro?\nEsto BORRARÁ TODOS los datos permanentemente.")) return;
+
+    const pass = prompt("Confirma la contraseña:");
+    if (pass !== CONTRASEÑA_DIRECCION) {
+        alert("Contraseña incorrecta.");
+        return;
+    }
+
+    db.collection('courses').get().then(snapshot => {
+        const batch = db.batch();
+        snapshot.forEach(doc => batch.delete(doc.ref));
+        return batch.commit();
+    })
+    .then(() => {
+        alert("¡Todos los datos han sido borrados!");
+        updateCourseSelects();
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error al borrar: " + err.message);
+    });
+});
+
+// Ver registros por estudiante + trimestre
+document.getElementById('viewStudentBtn')?.addEventListener('click', () => {
+    const course = document.getElementById('selectCourseStudent').value;
+    const studentName = document.getElementById('selectStudentView').value;
+    const trimestre = document.getElementById('selectTrimestreEstudiante').value;
+
+    if (!course || !studentName) {
+        alert("Seleccione curso y estudiante primero");
+        return;
+    }
+
+    const container = document.getElementById('recordsTable');
+    container.innerHTML = '<p>Cargando...</p>';
+    document.getElementById('exportPdfBtn').style.display = 'none';
+
+    db.collection('courses').doc(course).get().then(doc => {
+        if (!doc.exists) return container.innerHTML = '<p>Curso no encontrado.</p>';
+
+        const data = doc.data();
+        const student = data.students.find(s => s.name === studentName);
+        if (!student) return container.innerHTML = '<p>Estudiante no encontrado.</p>';
+
+        let issues = student.issues || [];
+        if (trimestre) {
+            issues = issues.filter(i => i.trimestre === trimestre);
+        }
+
+        if (issues.length === 0) {
+            container.innerHTML = `<p>No hay incidencias${trimestre ? ' en ' + trimestre : ''} para ${studentName}.</p>`;
+            return;
+        }
+
+        issues.sort((a,b) => new Date(b.date) - new Date(a.date));
+
+        let html = `<h3>Registros de ${studentName} (${course}) ${trimestre ? '- ' + trimestre : ''}</h3>`;
+        html += '<table><thead><tr><th>Trimestre</th><th>Tipo</th><th>Materia</th><th>Fecha</th><th>Descripción</th></tr></thead><tbody>';
+
+        issues.forEach(i => {
+            const typeText = {
+                falta: 'Falta',
+                incumplimiento: 'Incumplimiento',
+                indisciplina: 'Indisciplina',
+                citacion: 'Citación'
+            }[i.type] || i.type;
+
+            html += `<tr>
+                <td>${i.trimestre}</td>
+                <td>${typeText}</td>
+                <td>${i.subject}</td>
+                <td>${i.date}</td>
+                <td>${i.description}</td>
+            </tr>`;
+        });
+
+        html += '</tbody></table>';
+        container.innerHTML = html;
+        document.getElementById('exportPdfBtn').style.display = 'inline-block';
+    }).catch(err => {
+        container.innerHTML = '<p>Error al cargar datos.</p>';
+        console.error(err);
+    });
+});
+
+// Exportar PDF
+document.getElementById('exportPdfBtn').addEventListener('click', async () => {
+    const { jsPDF } = window.jspdf;
+    const container = document.getElementById('recordsContainer');
+    try {
+        const canvas = await html2canvas(container, { scale: 2 });
+        const pdf = new jsPDF({
+            orientation: canvas.width > canvas.height ? 'landscape' : 'portrait',
+            unit: 'px',
+            format: [canvas.width, canvas.height]
+        });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', 0, 0, canvas.width, canvas.height);
+        pdf.save('Reporte_Incidencias.pdf');
+    } catch (err) {
+        alert("Error al generar PDF: " + err.message);
+        console.error(err);
+    }
+});
+
+// Inicialización
+mostrarApp();
 </script>
 </body>
 </html>
