@@ -337,9 +337,10 @@ function updateStudentSelect(courseSelectId, studentSelectId) {
                 opt.textContent = s.name;
                 select.appendChild(opt);
             });
-            // Mostrar trimestre solo después de elegir estudiante
+            // Para la vista de estudiante, actualizar visibilidad del trimestre
             if (studentSelectId === 'selectStudentView') {
-                document.getElementById('divTrimestreEstudiante').classList.toggle('hidden', !course || !select.value);
+                const student = select.value;
+                document.getElementById('divTrimestreEstudiante').classList.toggle('hidden', !course || !student);
             }
         }
     }).catch(err => console.error("Error cargando estudiantes:", err));
@@ -580,8 +581,25 @@ document.getElementById('exportPdfBtn').addEventListener('click', async () => {
     }
 });
 
-// Inicialización
-mostrarApp();
+// Inicialización de eventos para carga de estudiantes
+document.addEventListener('DOMContentLoaded', () => {
+    // Evento para cargar estudiantes al seleccionar curso en registrar incidencia
+    document.getElementById('selectCourseIssue').addEventListener('change', () => {
+        updateStudentSelect('selectCourseIssue', 'selectStudent');
+    });
+
+    // Evento para cargar estudiantes al seleccionar curso en ver registros
+    document.getElementById('selectCourseStudent').addEventListener('change', () => {
+        updateStudentSelect('selectCourseStudent', 'selectStudentView');
+    });
+
+    // Evento para mostrar el div de trimestre al seleccionar estudiante en ver registros
+    document.getElementById('selectStudentView').addEventListener('change', () => {
+        const course = document.getElementById('selectCourseStudent').value;
+        const student = document.getElementById('selectStudentView').value;
+        document.getElementById('divTrimestreEstudiante').classList.toggle('hidden', !course || !student);
+    });
+});
 </script>
 </body>
 </html>
