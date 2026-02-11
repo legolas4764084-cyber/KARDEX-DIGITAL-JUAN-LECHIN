@@ -169,14 +169,40 @@
             </form>
         </div>
 
-        <!-- Sección 2: Agregar Estudiante (solo Dirección) -->
+        <!-- Sección 2: Agregar Estudiantes (solo Dirección) -->
         <div class="section hidden" id="sectionAgregarEstudiante">
-            <h2>2. Agregar Estudiante a un Curso</h2>
-            <form id="addStudentForm">
+            <h2>2. Agregar Estudiantes a un Curso</h2>
+            
+            <form id="addStudentsForm">
                 <label for="selectCourseAddStudent">Seleccionar Curso:</label>
                 <select id="selectCourseAddStudent" required></select>
+
+                <label for="fileStudents">Subir lista de estudiantes (TXT o CSV):</label>
+                <input type="file" id="fileStudents" accept=".txt, .csv" required>
+
+                <div id="csvPreview" style="margin: 15px 0; max-height: 200px; overflow-y: auto; display: none; background: #f8f9fa; padding: 12px; border: 1px solid #ccc; border-radius: 6px;"></div>
+
+                <p style="font-size: 0.9em; color: #555; margin: 10px 0;">
+                    Formato recomendado (una columna):<br>
+                    Puedes incluir o no el encabezado "Nombre"
+                </p>
+                <pre style="background:#f8f8f8; padding:10px; border-radius:6px; font-size:0.95em; margin-bottom:15px;">
+Nombre
+Juan Pérez Gómez
+María López Ramírez
+Ana Fernández S.
+Carlos A. Mamani
+                </pre>
+
+                <button type="submit">Validar y Agregar Estudiantes</button>
+            </form>
+
+            <!-- Opción individual -->
+            <hr style="margin: 40px 0 20px;">
+            <h3>Agregar un estudiante individualmente:</h3>
+            <form id="addStudentForm">
                 <label for="studentName">Nombre Completo del Estudiante:</label>
-                <input type="text" id="studentName" required placeholder="Ej: María López García">
+                <input type="text" id="studentName" placeholder="Ej: María López García">
                 <button type="submit">Agregar Estudiante</button>
             </form>
         </div>
@@ -412,7 +438,7 @@ document.getElementById('addCourseForm')?.addEventListener('submit', e => {
     });
 });
 
-// Agregar estudiante
+// Agregar estudiante individual
 document.getElementById('addStudentForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const course = document.getElementById('selectCourseAddStudent').value;
@@ -438,6 +464,149 @@ document.getElementById('addStudentForm')?.addEventListener('submit', e => {
             })
             .catch(err => alert("Error: " + err.message));
     });
+});
+
+// Agregar múltiples estudiantes desde TXT/CSV con validaciones robustas
+document.getElementById('addStudentsForm')?.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const course = document.getElementById('selectCourseAddStudent').value;
+    const fileInput = document.getElementById('fileStudents');
+    const previewDiv = document.getElementById('csvPreview');
+    
+    if (!course) return alert("Selecciona un curso primero");
+    if (!fileInput.files?.length) return alert("Selecciona un archivo TXT o CSV");
+
+    const file = fileInput.files[0];
+    
+    try {
+        const text = await file.text();
+        const lines = text.split(/\r?\n/)
+                         .map(line => line.trim())
+                         .filter(line => line.length > 0);
+
+        if (lines.length === 0) return alert("El archivo está vacío");
+
+        // Determinar si hay encabezado
+        let startIndex = 0;
+        if (lines[0].toLowerCase().trim().match(/^nombre$/i) || 
+            lines[0].toLowerCase().includes("nombre")) {
+            startIndex = 1; // saltamos el encabezado
+        }
+
+        const names = lines.slice(startIndex)
+                           .map(name => name.trim())
+                           .filter(name => name.length > 0);
+
+        if (names.length === 0) return alert("No se encontraron nombres válidos después del encabezado (si lo hay)");
+
+        // ────────────────────────────────────────────────
+        // VALIDACIONES POR NOMBRE
+        // ────────────────────────────────────────────────
+        const validNames = [];
+        const invalidNames = [];
+        const seenInFile = new Set(); // para detectar duplicados dentro del archivo
+
+        const nameRegex = /^[A-Za-zÁÉÍÓÚáéíóúÑñÜü\s.'-]{2,80}$/;
+
+        names.forEach((name, index) => {
+            const originalLine = index + startIndex + 1;
+
+            if (!nameRegex.test(name)) {
+                invalidNames.push(`Línea ${originalLine}: "${name}" → no válido (solo letras, espacios, acentos, ñ, guiones, puntos; min 2 caracteres)`);
+                return;
+            }
+
+            const normalized = name.toLowerCase().trim();
+            
+            if (seenInFile.has(normalized)) {
+                invalidNames.push(`Línea ${originalLine}: "${name}" → duplicado dentro del archivo`);
+                return;
+            }
+
+            seenInFile.add(normalized);
+            validNames.push(name.trim());
+        });
+
+        // Mostrar preview con validación visual
+        let previewHTML = `<strong>${validNames.length} nombres válidos encontrados | ${invalidNames.length} con problemas</strong><br><br>`;
+        
+        if (validNames.length > 0) {
+            previewHTML += "<strong>Válidos:</strong><ul style='margin:8px 0 15px 20px;'>";
+            validNames.slice(0, 15).forEach(n => previewHTML += `<li>${n}</li>`);
+            if (validNames.length > 15) previewHTML += `<li>... y ${validNames.length - 15} más</li>`;
+            previewHTML += "</ul>";
+        }
+
+        if (invalidNames.length > 0) {
+            previewHTML += "<strong>Problemas detectados:</strong><ul style='color:#c00; margin:8px 0 15px 20px;'>";
+            invalidNames.slice(0, 10).forEach(err => previewHTML += `<li>${err}</li>`);
+            if (invalidNames.length > 10) previewHTML += `<li>... y ${invalidNames.length - 10} más</li>`;
+            previewHTML += "</ul>";
+        }
+
+        previewDiv.innerHTML = previewHTML;
+        previewDiv.style.display = 'block';
+
+        if (validNames.length === 0) {
+            return alert("No hay nombres válidos para agregar. Corrige el archivo e inténtalo de nuevo.");
+        }
+
+        if (invalidNames.length > 0 && !confirm(`Hay ${invalidNames.length} nombres con problemas.\n¿Quieres continuar solo con los ${validNames.length} válidos?`)) {
+            return;
+        }
+
+        // ────────────────────────────────────────────────
+        // Comparar con los que ya existen en Firestore
+        // ────────────────────────────────────────────────
+        const docRef = db.collection('courses').doc(course);
+        const doc = await docRef.get();
+        
+        if (!doc.exists) return alert("Curso no encontrado");
+
+        const data = doc.data();
+        let students = data.students || [];
+        const existingNames = new Set(students.map(s => s.name.toLowerCase().trim()));
+
+        let addedCount = 0;
+        let duplicates = 0;
+
+        validNames.forEach(name => {
+            const normalized = name.toLowerCase().trim();
+            if (existingNames.has(normalized)) {
+                duplicates++;
+                return;
+            }
+
+            students.push({ 
+                name: name.trim(), 
+                issues: [] 
+            });
+            addedCount++;
+            existingNames.add(normalized); // para evitar duplicados en la misma carga
+        });
+
+        if (addedCount === 0) {
+            return alert(`No se agregaron nuevos estudiantes.\n${duplicates > 0 ? duplicates + ' ya existían en el curso.' : 'Revisa las validaciones.'}`);
+        }
+
+        await docRef.update({ students });
+
+        alert(`¡Éxito! Se agregaron ${addedCount} estudiantes nuevos.\n${duplicates > 0 ? duplicates + ' ya existían en el curso.' : ''}`);
+
+        // Limpiar
+        fileInput.value = '';
+        previewDiv.style.display = 'none';
+        previewDiv.innerHTML = '';
+
+        // Actualizar selects
+        updateStudentSelect('selectCourseIssue', 'selectStudent');
+        updateStudentSelect('selectCourseStudent', 'selectStudentView');
+
+    } catch (err) {
+        console.error("Error procesando archivo:", err);
+        alert("Error al leer/procesar el archivo:\n" + err.message);
+    }
 });
 
 // Registrar incidencia (sin recargar página)
