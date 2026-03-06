@@ -494,7 +494,7 @@ document.getElementById('logoutBtn').addEventListener('click', () => {
     }
 });
 
-// Crear curso (sin cambios)
+// Crear curso
 document.getElementById('addCourseForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const name = document.getElementById('courseName').value.trim();
@@ -515,7 +515,64 @@ document.getElementById('addCourseForm')?.addEventListener('submit', e => {
     });
 });
 
-// Agregar estudiante individual (sin cambios)
+// Vista previa del archivo de estudiantes
+document.getElementById('fileStudents')?.addEventListener('change', function() {
+    const file = this.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        const text = e.target.result;
+        const lines = text.split(/\r?\n/).slice(0, 10); // preview first 10
+        const previewDiv = document.getElementById('csvPreview');
+        previewDiv.innerHTML = '<strong>Vista previa (primeras líneas):</strong><pre>' + lines.join('\n') + '</pre>';
+        previewDiv.style.display = 'block';
+    };
+    reader.readAsText(file);
+});
+
+// Agregar estudiantes desde archivo
+document.getElementById('addStudentsForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const course = document.getElementById('selectCourseAddStudent').value;
+    const file = document.getElementById('fileStudents').files[0];
+    if (!course || !file) return alert("Seleccione curso y archivo");
+
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        const text = event.target.result;
+        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(l => l);
+        const hasHeader = lines[0].toLowerCase().includes('nombre');
+        const names = hasHeader ? lines.slice(1) : lines;
+
+        db.collection('courses').doc(course).get().then(doc => {
+            if (!doc.exists) return alert("Curso no encontrado");
+
+            const data = doc.data();
+            const existing = data.students.map(s => s.name);
+            const newStudents = names.filter(n => !existing.includes(n));
+
+            if (newStudents.length === 0) {
+                alert("Todos los estudiantes ya están agregados o lista vacía");
+                return;
+            }
+
+            data.students.push(...newStudents.map(name => ({ name, issues: [] })));
+            db.collection('courses').doc(course).update({ students: data.students })
+                .then(() => {
+                    alert(`${newStudents.length} estudiantes agregados`);
+                    document.getElementById('addStudentsForm').reset();
+                    document.getElementById('csvPreview').style.display = 'none';
+                    updateStudentSelect('selectCourseIssue', 'selectStudent');
+                    updateStudentSelect('selectCourseStudent', 'selectStudentView');
+                })
+                .catch(err => alert("Error: " + err.message));
+        });
+    };
+    reader.readAsText(file);
+});
+
+// Agregar estudiante individual
 document.getElementById('addStudentForm')?.addEventListener('submit', e => {
     e.preventDefault();
     const course = document.getElementById('selectCourseAddStudent').value;
@@ -543,13 +600,172 @@ document.getElementById('addStudentForm')?.addEventListener('submit', e => {
     });
 });
 
-// Registrar incidencia (sin cambios)
-// Borrar todo (sin cambios)
-// Ver registros por estudiante (sin cambios)
+// Registrar incidencia
+document.getElementById('registerIssueForm')?.addEventListener('submit', e => {
+    e.preventDefault();
+    const course = document.getElementById('selectCourseIssue').value;
+    const studentName = document.getElementById('selectStudent').value;
+    const trimestre = document.getElementById('trimestre').value;
+    const type = document.getElementById('issueType').value;
+    const subject = document.getElementById('subject').value;
+    const date = document.getElementById('issueDate').value;
+    const description = document.getElementById('issueDescription').value;
 
-// ────────────────────────────────────────────────
-// NUEVA MATRIZ: Estudiante × Materia
-// ────────────────────────────────────────────────
+    if (!course || !studentName || !trimestre || !type || !subject || !date || !description) {
+        return alert("Complete todos los campos");
+    }
+
+    db.collection('courses').doc(course).get().then(doc => {
+        if (!doc.exists) return alert("Curso no encontrado");
+
+        const data = doc.data();
+        const student = data.students.find(s => s.name === studentName);
+        if (!student) return alert("Estudiante no encontrado");
+
+        student.issues = student.issues || [];
+        student.issues.push({
+            trimestre,
+            type,
+            subject,
+            date,
+            description
+        });
+
+        db.collection('courses').doc(course).update({ students: data.students })
+            .then(() => {
+                alert("Incidencia registrada");
+                document.getElementById('registerIssueForm').reset();
+            })
+            .catch(err => alert("Error: " + err.message));
+    });
+});
+
+// Borrar todo
+document.getElementById('btnBorrarTodo')?.addEventListener('click', () => {
+    if (confirm("¿Seguro que desea borrar TODOS los datos? Esta acción es irreversible.")) {
+        db.collection('courses').get().then(snapshot => {
+            const batch = db.batch();
+            snapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            batch.commit().then(() => {
+                alert("Todos los datos han sido borrados.");
+                updateCourseSelects();
+            }).catch(err => alert("Error: " + err.message));
+        });
+    }
+});
+
+// Ver registros por estudiante
+document.getElementById('viewStudentBtn')?.addEventListener('click', () => {
+    const course = document.getElementById('selectCourseStudent').value;
+    const studentName = document.getElementById('selectStudentView').value;
+    const trimestre = document.getElementById('selectTrimestreEstudiante').value;
+
+    if (!course || !studentName) return alert("Seleccione curso y estudiante");
+
+    db.collection('courses').doc(course).get().then(doc => {
+        if (!doc.exists) return;
+
+        const student = doc.data().students.find(s => s.name === studentName);
+        if (!student) return;
+
+        let issues = student.issues || [];
+        if (trimestre) {
+            issues = issues.filter(i => i.trimestre === trimestre);
+        }
+
+        const tableDiv = document.getElementById('recordsTable');
+        if (issues.length === 0) {
+            tableDiv.innerHTML = '<p>No hay incidencias para este estudiante.</p>';
+            document.getElementById('exportPdfBtn').style.display = 'none';
+            return;
+        }
+
+        let html = `<h3>Registros de ${studentName} - ${course}</h3>`;
+        if (trimestre) html += `<p>Trimestre: ${trimestre}</p>`;
+        html += '<table><thead><tr><th>Trimestre</th><th>Tipo</th><th>Materia</th><th>Fecha</th><th>Descripción</th></tr></thead><tbody>';
+        issues.forEach(issue => {
+            html += `<tr><td>${issue.trimestre}</td><td>${issue.type}</td><td>${issue.subject}</td><td>${issue.date}</td><td>${issue.description}</td></tr>`;
+        });
+        html += '</tbody></table>';
+
+        tableDiv.innerHTML = html;
+        document.getElementById('exportPdfBtn').style.display = 'inline-block';
+
+        window.currentRecords = { studentName, course, trimestre, issues };
+    });
+});
+
+// Exportar registros a PDF
+document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+    const data = window.currentRecords;
+    if (!data) return alert("No hay registros cargados");
+
+    const { studentName, course, trimestre, issues } = data;
+
+    const tableBody = [
+        ['Trimestre', 'Tipo', 'Materia', 'Fecha', 'Descripción'].map(text => ({ text, style: 'tableHeader' }))
+    ];
+
+    issues.forEach(issue => {
+        tableBody.push([
+            issue.trimestre,
+            issue.type,
+            issue.subject,
+            issue.date,
+            issue.description
+        ]);
+    });
+
+    const docDefinition = {
+        pageSize: 'A4',
+        pageOrientation: 'portrait',
+        pageMargins: [40, 80, 40, 60],
+        header: {
+            text: `Kardex Digital - Juan Lechín Oquendo`,
+            alignment: 'center',
+            margin: [0, 30, 0, 0],
+            style: 'header'
+        },
+        footer: (currentPage, pageCount) => ({
+            text: `Página ${currentPage} de ${pageCount}   |   produced by legolas 70128060`,
+            alignment: 'center',
+            margin: [0, 20]
+        }),
+        content: [
+            { text: `Registros de Incidencias - ${studentName}`, style: 'title' },
+            { text: `Curso: ${course}${trimestre ? ` - Trimestre: ${trimestre}` : ''}`, style: 'subheader', margin: [0, 10, 0, 30] },
+            {
+                table: {
+                    headerRows: 1,
+                    widths: ['*', '*', '*', '*', '*'],
+                    body: tableBody
+                },
+                layout: {
+                    hLineWidth: () => 0.5,
+                    vLineWidth: () => 0.5,
+                    hLineColor: () => '#aaa',
+                    vLineColor: () => '#aaa',
+                    fillColor: (rowIndex) => {
+                        if (rowIndex === 0) return '#556B2F';
+                        return rowIndex % 2 === 0 ? '#f8f9fa' : null;
+                    }
+                }
+            }
+        ],
+        styles: {
+            header: { fontSize: 16, bold: true, color: '#556B2F' },
+            title: { fontSize: 18, bold: true, alignment: 'center' },
+            subheader: { fontSize: 15, bold: true, color: '#556B2F' },
+            tableHeader: { bold: true, fontSize: 11, color: 'white', fillColor: '#556B2F', alignment: 'center' }
+        }
+    };
+
+    pdfMake.createPdf(docDefinition).download(`Registros_${studentName.replace(/\s+/g,'_')}.pdf`);
+});
+
+// Matriz de incidencias
 document.getElementById('generateSummaryBtn')?.addEventListener('click', () => {
     const course = document.getElementById('selectCourseSummary').value;
     if (!course) return alert("Selecciona un curso primero");
@@ -626,9 +842,7 @@ document.getElementById('generateSummaryBtn')?.addEventListener('click', () => {
     });
 });
 
-// ────────────────────────────────────────────────
-// EXPORTAR MATRIZ A PDF
-// ────────────────────────────────────────────────
+// Exportar matriz a PDF
 document.getElementById('exportSummaryPdfBtn')?.addEventListener('click', () => {
     const data = window.currentMatrix;
     if (!data) return alert("No hay matriz cargada");
